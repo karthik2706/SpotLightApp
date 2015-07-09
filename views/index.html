@@ -21,24 +21,37 @@
         <div class="collapse navbar-collapse" id="navbar">
           <ul class="nav navbar-nav">
             <li class="active"><a href="/">My ToDo</a></li>
-            <li><a href="/dev">Developer ToDo</a></li>
           </ul>
         </div><!--/.nav-collapse -->
       </div>
     </nav>
-    <div class="container" style="margin-top:70px;">
-        <h1>My Todo</h1>
+    <div class="row chartContainer" style="display:none; margin-top:70px;">
+        <h1 class="container">Project ToDo Dashboard</h1>
         <hr>
+        <div style="margin-top:50px">
+            <div class="col-md-5" ><div id="chartContainer" style="height: 300px; width: 100%;"></div></div> 
+            <div class="col-md-7" ><div id="chartContainer2" class="col-md-6" style="height: 300px; width: 90%;"></div></div>
+        </div>
+    </div>      
+    <hr>
+    <div class="container usersLogin" style="margin-top:70px;">
+        <h1>My Todo as <span class="displayRole"></span></h1>
+        <hr>        
         <div class="container ng-scope">
             <div class="row col-md-12">
-                <div class="col-md-10">
+                <div class="col-md-7">
                     <input type="text" id="text" placeholder="Enter a Todo" class="form-control input-lg">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
+                    <input style="display:none" class="form-control input-lg devLogin" type="text" disabled value =""/>
+                    <select class="form-control input-lg" id="leadLogin" style="display:none;"></select>
+                </div>
+                <div class="col-md-2 pull-right">
                     <input class="btn" id="add" type="button" value="Add New ToDo">
                 </div>
             </div>
             <div class="row col-md-12 todos">
+            <div class="todo col-md-12 col-sm-12 col-xs-12" style="background:#ccc;"><div class="col-md-1 col-sm-1 col-xs-1">Status</div><div class="col-md-7 col-sm-7 col-xs-7"><span class="todo-name">ToDo Name</span></div><div class="col-md-2 col-sm-2 col-xs-2"><span class="todo-owner">Owner</span></div><div class="col-md-2 col-sm-2 col-xs-2"></div></div>
                 <div id="showAll"></div>                   
             </div>
         </div>
@@ -48,81 +61,182 @@
     <script src="/jquery/dist/jquery.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="DataManager.js"></script>
-
-    <script>
-    var options = {
-        connection: 'http://localhost:2000',
-        connectCB: connectCB,
-        collections: [{
-            'name': 'todos',
-            'subscribers': {
-                'allTodos': renderAllTodos
+    <script type="text/javascript">
+    var todoOpen = 0;
+    var todoCompleted = 0;
+    $(document).ready(function(){
+        var dashboard = false;
+        var owners = [            
+            {
+                "role" : "srmanager",
+                "name" : "Sai"
+            },            
+            {
+                "role" : "manager",
+                "name" : "Guru"
+            },            
+            {
+                "role" : "lead",
+                "name" : "Ravi"
             },
-        }]
-    };
+            {
+                "role" : "developer",
+                "name" : "Karthik"
+            },
+        ]
+        var loginType = getUserRole();
+        $('.displayRole').html(loginType.toUpperCase());
+        if(loginType == 'developer'){
+            $('.devLogin').show().val(getUserName('developer'));
+        }
+        else if(loginType == 'lead'){
+            var devs = [];
+            var opt = "";
+            for(i=0;i<owners.length;i++){
+                if(owners[i].role == 'developer' || owners[i].role == 'lead') {
+                    opt = opt + '<option val="'+owners[i].role+'">'+owners[i].name+'</option>'
+                }
+            }
+            $('#leadLogin').show().html(opt);
+        }
+        else if(loginType == 'manager'){
+            var devs = [];
+            var opt = "";
+            for(i=0;i<owners.length;i++){
+                if(owners[i].role == 'manager' || owners[i].role == 'lead') {
+                    opt = opt + '<option val="'+owners[i].role+'">'+owners[i].name+'</option>'
+                }
+            }
+            $('#leadLogin').show().html(opt);
+        }
+        else{
+            var dashboard = true;
+            $('.chartContainer').show();
+            $('.usersLogin').hide();            
+        }
+        function getUserName(loginrole){
+            for(i=0;i<owners.length;i++){
+                if(owners[i].role == loginrole) var loginName = owners[i].name;
+            }
+            return loginName;
+        }
+        function getRole(loginname){
+            for(i=0;i<owners.length;i++){
+                if(owners[i].name == loginname) var loginRole = owners[i].role;
+            }
+            return loginRole;
+        }
 
-    var dm = new DataManager(options);
+        var options = {
+            connection: 'http://localhost:2000',
+            connectCB: connectCB,
+            collections: [{
+                'name': 'todos',
+                'subscribers': {
+                    'allTodos': renderAllTodos
+                },
+            }]
+        };
+        var dm = new DataManager(options);
 
     function connectCB() {
         console.log('connected');
     }
 
+    
+
     function renderAllTodos(data) {
         var html = '';
         if (!data) return;
         data.forEach(function(k) {
-            html += '<div class="todo col-md-12 col-sm-12 col-xs-12 '+k.isCompleted+'"><div class="col-md-1 col-sm-1 col-xs-1"><input class="complete" data-id="'+k.id+'" type="checkbox" /></div><div class="col-md-9 col-sm-9 col-xs-9"><span class="todo-name">'+k.name+'</span></div><div class="col-md-2 col-sm-2 col-xs-2"><a href="javascript:" data-name="'+k.name+'" data-id="'+k.id+'"  class="btn btn-info edit-todo" value="Edit">Edit</a><a href="javascript:" data-id="'+k.id+'" class="remove-todo btn btn-danger">Delete</a></div></div>';
+            if(loginType == 'developer'){
+                if(getRole(k.assignedTo) == loginType){
+                    html += '<div class="todo col-md-12 col-sm-12 col-xs-12 '+k.isCompleted+'"><div class="col-md-1 col-sm-1 col-xs-1"><input class="complete" data-id="'+k.id+'" type="checkbox" /></div><div class="col-md-7 col-sm-7 col-xs-7"><span class="todo-name">'+k.name+'</span></div><div class="col-md-2 col-sm-2 col-xs-2"><span class="todo-owner">'+k.assignedTo+'</span></div><div class="col-md-2 col-sm-2 col-xs-2"><a href="javascript:" data-name="'+k.name+'" data-id="'+k.id+'"  class="btn btn-info edit-todo" value="Edit">Edit</a><a href="javascript:" data-id="'+k.id+'" class="remove-todo btn btn-danger">Delete</a></div></div>';
+                }
+            }
+            else if(loginType == 'lead'){
+                if(getRole(k.assignedTo) == loginType || getRole(k.assignedTo) == 'developer'){
+                    html += '<div class="todo col-md-12 col-sm-12 col-xs-12 '+k.isCompleted+'"><div class="col-md-1 col-sm-1 col-xs-1"><input class="complete" data-id="'+k.id+'" type="checkbox" /></div><div class="col-md-7 col-sm-7 col-xs-7"><span class="todo-name">'+k.name+'</span></div><div class="col-md-2 col-sm-2 col-xs-2"><span class="todo-owner">'+k.assignedTo+'</span></div><div class="col-md-2 col-sm-2 col-xs-2"><a href="javascript:" data-name="'+k.name+'" data-id="'+k.id+'"  class="btn btn-info edit-todo" value="Edit">Edit</a><a href="javascript:" data-id="'+k.id+'" class="remove-todo btn btn-danger">Delete</a></div></div>';
+                }
+            } 
+            else if(loginType == 'manager'){
+                if(getRole(k.assignedTo) == loginType || getRole(k.assignedTo) == 'lead'){
+                    html += '<div class="todo col-md-12 col-sm-12 col-xs-12 '+k.isCompleted+'"><div class="col-md-1 col-sm-1 col-xs-1"><input class="complete" data-id="'+k.id+'" type="checkbox" /></div><div class="col-md-7 col-sm-7 col-xs-7"><span class="todo-name">'+k.name+'</span></div><div class="col-md-2 col-sm-2 col-xs-2"><span class="todo-owner">'+k.assignedTo+'</span></div><div class="col-md-2 col-sm-2 col-xs-2"><a href="javascript:" data-name="'+k.name+'" data-id="'+k.id+'"  class="btn btn-info edit-todo" value="Edit">Edit</a><a href="javascript:" data-id="'+k.id+'" class="remove-todo btn btn-danger">Delete</a></div></div>';
+                }
+            }else{
+                if(k.isCompleted) todoCompleted++;
+                else todoOpen++;
+            }   
+            renderPie();
         });
+
         $('#showAll').html(html);
 
         $('.todo').each(function(){
             var $this = $(this);
-            if($this.hasClass('true')) $this.find('.complete').prop('checked', true);
-            else $this.find('.complete').prop('checked', false);
+            if($this.hasClass('true')){
+                todoCompleted++;
+                $this.find('.complete').prop('checked', true);
+            } 
+            else{
+                todoOpen++;
+                $this.find('.complete').prop('checked', false);
+            }
             if($this.hasClass('true')) $this.find('.edit-todo').css('visibility','hidden');
             else $this.find('.edit-todo').css('visibility','visible');
         });
-
+        //renderPie();
         // bind event listeners
         $('.remove-todo').on('click', removeTodo);
         $('.edit-todo').on('click', editTodo);
-        $('.complete').on('click', completeTodo);
+        $('.complete').on('click', completeTodo);        
     }
 
     $('#add').click(saveTodo);
-
+    var owner = {
+        name: function(){
+            if(loginType == 'lead' || loginType == 'manager') return $('#leadLogin').val();
+            else if(loginType == 'developer') return $('.devLogin').val();
+        }
+    };
     function saveTodo() {
-        dm.pubData('todos', 'saveTodo', {
-            id: Math.ceil(Math.random() * 1000),
-            name: $('#text').val(),
-            isCompleted: false
-        }, function(savedToLocal) {
-            console.log('savedToLocal : ', savedToLocal);
-        });
-        $('#text').val('');
+        if($('#text').val() !== ""){
+           dm.pubData('todos', 'saveTodo', {
+                id: Math.ceil(Math.random() * 1000),
+                name: $('#text').val(),
+                isCompleted: false,
+                assignedTo : owner.name()
+            }, function(savedToLocal) {
+                console.log('savedToLocal : ', savedToLocal);
+            });
+            $('#text').val(''); 
+        }        
     }
 
     function completeTodo() {
         var name = $(this).parents('.todo').find('.todo-name').text();
         var id = $(this).data('id');
         var value = $(this).is(':checked');
+        var owner = $(this).parents('.todo').find('.todo-owner').text();
         dm.pubData('todos', 'updateTodo', {
             id: id,
             isCompleted: value,
-            name: name
+            name: name,
+            assignedTo : owner
         }, function(savedToLocal) {
             console.log('savedToLocal : ', savedToLocal);
         });
-
     }
 
-    function update(id){
-       var updatedName = $('.newVal').val();
-       console.log(id);
+    function updateTodos(){
+       var updatedName = $(this).parents('.todo').find('.newVal').val();
+       var owner = $(this).parents('.todo').find('.todo-owner').text();
+       var id = $(this).data('id');      
         if (updatedName) {
             dm.pubData('todos', 'updateTodo', {
                 id: id,
-                name: updatedName
+                name: updatedName,
+                assignedTo : owner
             }, function(savedToLocal) {
                 console.log('savedToLocal : ', savedToLocal);
             });
@@ -132,9 +246,11 @@
     function editTodo() {
         var name = $(this).data('name');
         var id = $(this).data('id');
-        var $input = "<input class='newVal' type='text' value='"+name+"' />";
-        var $save = " <a href='javascript:' onclick='update("+id+")' class='btn btn-warning'>Save</a>";
-        $(this).parents('.todo').find('.todo-name').hide().after($save).after($input);       
+        var $input = "<input style='width:90%' class='newVal' type='text' value='"+name+"' />";
+        var $save = " <a href='javascript:' data-id='"+id+"' class='save btn btn-warning'>Save</a>";
+        $(this).parents('.todo').find('.todo-name').hide().after($input); 
+        $(this).parents('.todo').find('.edit-todo').hide().after($save);
+        $('.save').on('click', updateTodos);
     }
 
     function removeTodo() {
@@ -144,8 +260,104 @@
             console.log('savedToLocal : ', savedToLocal);
         });
     }
-    </script>
 
+    function getUserRole(){
+        var loc = window.location.href;
+        var spl = loc.split('#');
+        var role = spl[1];
+        return role;        
+    }
+});
+</script>
+
+<script type="text/javascript" src="/js/jquery.canvasjs.min.js"></script>
+<script type="text/javascript">
+function renderPie() {
+    var chart = new CanvasJS.Chart("chartContainer",
+    {
+        title:{
+            text: "How is Project going?"
+        },
+                animationEnabled: true,
+        legend: {
+            verticalAlign: "bottom",
+            horizontalAlign: "center"
+        },
+        theme: "theme1",
+        data: [
+        {        
+            type: "pie",
+            indexLabelFontFamily: "Garamond",       
+            indexLabelFontSize: 20,
+            indexLabelFontWeight: "bold",
+            startAngle:0,
+            indexLabelFontColor: "MistyRose",       
+            indexLabelLineColor: "darkgrey", 
+            indexLabelPlacement: "inside", 
+            toolTipContent: "{name}: {y}hrs",
+            showInLegend: true,
+            indexLabel: "#percent%", 
+            dataPoints: [
+                {  y: todoCompleted, name: "ToDo Completed", legendMarkerType: "triangle"},
+                {  y: todoOpen, name: "ToDo Open", legendMarkerType: "square"},
+            ]
+        }
+        ]
+    });
+    var chart2 = new CanvasJS.Chart("chartContainer2",
+    {
+        animationEnabled: true,
+        title:{
+            text: "ToDo's Trend...!"
+        },
+        data: [
+        {
+            type: "spline", //change type to bar, line, area, pie, etc
+            showInLegend: true,        
+            dataPoints: [
+                { x: 10, y: 51 },
+                { x: 20, y: 45},
+                { x: 30, y: 50 },
+                { x: 40, y: 62 },
+                { x: 50, y: 95 },
+                { x: 60, y: 66 },
+                { x: 70, y: 24 },
+                { x: 80, y: 32 },
+                { x: 90, y: 16}
+            ]
+            },
+            {
+            type: "spline",
+            showInLegend: true,        
+            dataPoints: [
+                { x: 10, y: 21 },
+                { x: 20, y: 44},
+                { x: 30, y: 35 },
+                { x: 40, y: 45 },
+                { x: 50, y: 75 },
+                { x: 60, y: 58 },
+                { x: 70, y: 18 },
+                { x: 80, y: 30 },
+                { x: 90, y: 11}
+            ]
+            }
+        ],
+        legend: {
+            cursor: "pointer",
+            itemclick: function (e) {
+                if (typeof(e.dataSeries.visible) === "undefined" || e.dataSeries.visible) {
+                    e.dataSeries.visible = false;
+                } else {
+                    e.dataSeries.visible = true;
+            }
+            chart2.render();
+            }
+        }
+    });
+    chart.render();
+    chart2.render();
+}
+</script>
 </body>
 
 </html>

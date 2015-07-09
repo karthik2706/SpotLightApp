@@ -1,5 +1,5 @@
 var mongojs = require('mongojs');
-var db = mongojs('mongodb://admin:admin123@ds061620.mongolab.com:61620/testsync', ['todos']);
+var db = mongojs('database', ['todos']);
 
 var todos = {
 
@@ -11,9 +11,7 @@ var todos = {
     },
     updateTodo: function(todo, callback) {
         db.todos.update({
-            id: todo.id,
-            name: todo.name,
-            isCompleted: todo.isCompleted
+            id: todo.id
         }, todo, {}, callback);
     },
     deleteTodo: function(id, callback) {
