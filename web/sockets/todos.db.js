@@ -1,5 +1,5 @@
 var mongojs = require('mongojs');
-var db = mongojs('database', ['todos']);
+var db = mongojs('mongodb://admin:admin123@ds061620.mongolab.com:61620/testsync', ['todos']);
 
 var todos = {
 
