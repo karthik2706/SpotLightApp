@@ -265,7 +265,8 @@
         var loc = window.location.href;
         var spl = loc.split('#');
         var role = spl[1];
-        return role;        
+        if(role) return role;
+        else return "dashboard";        
     }
 });
 </script>
